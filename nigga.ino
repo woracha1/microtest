@@ -1,0 +1,158 @@
+ // #include <WiFi.h>  
+    // #include <MQTT.h>  
+    #include <Stepper.h>
+    #include <Bounce2.h>
+    #include <LiquidCrystal_I2C.h>
+    #include <Wire.h>
+      
+    #define LDR 36
+    #define Button 23
+    const int stepsPerRevolution = 2048;
+
+    LiquidCrystal_I2C lcd(0x27, 16, 2);
+    Stepper myStepper(stepsPerRevolution, 18, 5, 19, 17);
+    int LDR_Value = 0;
+    long currentStep = 0;  
+    bool isLockMode = false;
+    String directionMsg = "Stop";
+
+Bounce switchMode = Bounce();
+
+void IRAM_ATTR IO_INT_ISR(){
+  isLockMode = !isLockMode;
+}
+  
+    // const char ssid[] = "@JumboPlusIoT";  
+    // const char pass[] = "esp32group40";  
+      
+    // const char mqtt_broker[]="test.mosquitto.org";  
+    // const char mqtt_topic[]="group/command";  
+    // const char mqtt_client_id[]="arduino_group_x"; // must change this string to a unique value  
+    // int MQTT_PORT=1883;  
+      
+      
+    // WiFiClient net;  
+    // MQTTClient client;  
+      
+    unsigned long lastMillis = 0;  
+      
+    // void connect() {  
+    //   Serial.print("checking wifi...");  
+    //   while (WiFi.status() != WL_CONNECTED) {  
+    //     Serial.print(".");  
+    //     delay(1000);  
+    //   }  
+      
+    //   Serial.print("\nconnecting...");  
+    //   while (!client.connect(mqtt_client_id)) {    
+    //     Serial.print(".");  
+    //     delay(1000);  
+    //   }  
+      
+    //   Serial.println("\nconnected!");  
+      
+    //   client.subscribe(mqtt_topic);  
+    //   // client.unsubscribe("/hello");  
+    // }  
+      
+    // void messageReceived(String &topic, String &payload) {  
+    //   Serial.println("incoming: " + topic + " - " + payload);  
+      
+    //   if (payload == "reset") {
+    //   isLockMode = true;
+    //   myStepper.step(-currentStep);
+    //   currentStep = 0;
+    //   }
+    //   if (payload == "changeMode") {
+    //     isLockMode = !isLockMode;
+    //   }
+      
+    // }  
+      
+    void setup() {  
+      Serial.begin(9600);  
+      // WiFi.begin(ssid, pass);  
+
+      lcd.init();
+      lcd.backlight();
+      
+      // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported  
+      // by Arduino. You need to set the IP address directly.  
+      // client.begin(mqtt_broker, MQTT_PORT, net);  
+      // client.onMessage(messageReceived);  
+      
+      analogReadResolution(10);
+      myStepper.setSpeed(15);
+      currentStep = 0;
+      pinMode(LDR, INPUT);
+
+      attachInterrupt(Button, IO_INT_ISR, RISING);
+
+      switchMode.interval(25);
+
+      // connect();  
+    }  
+      
+    void loop() {  
+      // client.loop();  
+      delay(10);  // <- fixes some issues with WiFi stability  
+      
+      // if (!client.connected()) {  
+      //   connect();  
+      // }  
+      
+      if (!isLockMode) {
+        LDR_Value = analogRead(LDR);
+        if (LDR_Value > 300 && LDR_Value < 800) {
+          int moveStep = (LDR_Value <= 550) ? -10 : 10;
+
+          if(moveStep > 0){
+            directionMsg = "CW";
+          } else directionMsg = "CCW";
+           
+          myStepper.step(moveStep);
+          currentStep += moveStep;
+
+        
+
+          if (currentStep >= stepsPerRevolution) currentStep -= stepsPerRevolution;
+          if (currentStep < 0) currentStep += stepsPerRevolution;
+    
+        }else {
+          directionMsg = "Idle";
+        }
+      }else {
+          directionMsg = "LOCKED";
+      }
+      
+      
+      // if (millis() - lastMillis > 1000) {  
+      //   lastMillis = millis();  
+      //   int angle = (currentStep * 360) / stepsPerRevolution;
+      //   client.publish("wora/LDR", String(LDR_Value));
+      //   client.publish("wora/angle", String(angle));
+      //   client.publish("wora/mode", isLockMode ? "Lock Position" : "Unlock Position");
+      //   }  
+      // }
+
+      if (millis() - lastMillis > 500) { 
+        lastMillis = millis(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Mode: " + String(isLockMode ? "Lock  " : "Unlock"));
+        lcd.setCursor(0, 1);
+        lcd.print("Dir: ");
+        lcd.print(directionMsg + "    "); // เติม space เพื่อล้างตัวอักษรเก่า
+
+        Serial.println( isLockMode ? "Lock Position" : "Unlock Position");
+        Serial.println("Dir: " + directionMsg);
+        Serial.println("LDR_Value: " + String(LDR_Value));
+        int angle = (currentStep * 360) / stepsPerRevolution;
+        Serial.println("currentStep: " + String(currentStep));
+        Serial.println("angle: " + String(angle));
+        Serial.println("----------------------------");
+      }
+    }
+
+    
+      
+    
