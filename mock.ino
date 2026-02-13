@@ -152,15 +152,7 @@ void IRAM_ATTR IO_INT_ISR(){
         lcd.print("Mode: " + String(isLockMode ? "Lock  " : "Unlock"));
         lcd.setCursor(0, 1);
         lcd.print("Dir: ");
-        lcd.print(directionMsg + "    "); // เติม space เพื่อล้างตัวอักษรเก่า
-
-        Serial.println( isLockMode ? "Lock Position" : "Unlock Position");
-        Serial.println("Dir: " + directionMsg);
-        Serial.println("LDR_Value: " + String(LDR_Value));
-        int angle = (currentStep * 360) / stepsPerRevolution;
-        Serial.println("currentStep: " + String(currentStep));
-        Serial.println("angle: " + String(angle));
-        Serial.println("----------------------------");
+        lcd.print(directionMsg + "    "); 
       }
     }
 
